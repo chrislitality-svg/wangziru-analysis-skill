@@ -14,8 +14,11 @@
   5. 对称凑数       一方面…另一方面、不仅…而且
   6. 「不是A，而是B」滥用（全稿超过 1 次就扣分）
   7. 书面标点       破折号、分号（口播没有标点，念不出来）
-  8. 长句           单句 > 30 字
-  9. 人味不足       「你 / 我 / 我们」人称密度、设问密度、数字密度偏低
+  8. 一口气念不完   逗号之间的分句 > 25 字（他的分句中位 10 字、P90 20 字，超过 25 字的只有 3%）
+                   注意：一句话本身可以长。他论证时一句话中位约 30 字、要分三四口气说完，
+                   长句靠「因为 / 所以 / 如果 / 它」一节一节接起来。v1.2 以前这里查的是「单句 > 30 字」，
+                   那是把转写的气口段当成了句子，已改。
+  9. 人味不足       「你 / 我 / 我们」人称密度、设问密度、数字密度、逻辑词密度偏低
   另报：确定词密度（一定/绝对/肯定…，上限 2 次/千字；只提示，不计入指数）
 
 基准：「王自如AI」71 个视频（约 50 小时口播、796,821 字转写）的实测频次，报告里逐项对照。
@@ -51,12 +54,21 @@ PAIRS = {
     "不是A，而是B": r"不是[^。！？\n]{1,24}?而是|是[^。！？\n]{1,16}?而不是",   # 含反向「是B，而不是A」
 }
 # 人味基准（次 / 千字，71 篇实测）
-HUMAN_BASE = {"人称（你/我/我们）": 40.6, "设问（？/吗/呢）": 4.2, "数字": 18.1}   # 转写无问号，设问实际更高
+HUMAN_BASE = {"人称（你/我/我们）": 40.6, "设问（？/吗/呢）": 4.2, "数字": 18.1,   # 转写无问号，设问实际更高
+              "逻辑词（因为/所以/但/如果/那么/它…）": 24.9}   # 长视频；逐篇 14.5–33，全部 71 篇 20.0
+# 把逻辑关系说出来的词：他「像英文」的长句主要靠这些词和「它」回指撑起来
+LOGIC = re.compile(r"因为|所以|但|如果|那么|的话|也就是说|换句话说|之所以|对于|所谓|只有|它")
 NUM = re.compile(r"\d+(?:\.\d+)?%?|[一二两三四五六七八九十百千万亿]+(?=[个次年天岁倍字小时分钟秒万亿元块条件位家款种步样遍])")
 
 
 def sentences(text):
     parts = re.split(r"[。！？!?\n]+", text)
+    return [p.strip() for p in parts if re.search(r"[一-鿿A-Za-z0-9]", p or "")]
+
+
+def clauses(text):
+    """逗号之间的分句，约等于一口气。"""
+    parts = re.split(r"[，,、；;：:。！？!?\n]+", text)
     return [p.strip() for p in parts if re.search(r"[一-鿿A-Za-z0-9]", p or "")]
 
 
@@ -86,17 +98,20 @@ def analyse(text):
             pairs[name] = {"count": len(ms), "where": [m.group(0)[:40] for m in ms[:3]]}
     sents = sentences(text)
     lens = sorted(cjk_len(s) for s in sents) or [0]
-    long_s = [s for s in sents if cjk_len(s) > 30]
+    cl = sorted(cjk_len(c) for c in clauses(text)) or [0]
+    long_c = [c for c in clauses(text) if cjk_len(c) > 25]
     human = {
         "人称（你/我/我们）": (text.count("你") + text.count("我")) / k,   # "我们"已含在"我"里
         "设问（？/吗/呢）": (text.count("？") + text.count("?") + text.count("吗") + text.count("呢")) / k,
         "数字": len(NUM.findall(text)) / k,
+        "逻辑词（因为/所以/但/如果/那么/它…）": len(LOGIC.findall(text)) / k,
     }
     certainty = len(re.findall(r"一定|绝对|肯定|必然|毫无疑问|百分之百", text)) / k
     return {
         "chars": n, "sentences": len(sents),
         "sent_len_median": lens[len(lens) // 2], "sent_len_p90": lens[min(len(lens) - 1, int(len(lens) * 0.9))],
-        "long_sentences": long_s, "hits": hits, "pairs": pairs,
+        "clause_len_median": cl[len(cl) // 2], "clause_len_p90": cl[min(len(cl) - 1, int(len(cl) * 0.9))],
+        "long_clauses": long_c, "hits": hits, "pairs": pairs,
         "dash": len(re.findall(r"—+", text)), "semicolon": text.count("；") + text.count(";"),
         "human_per_k": {key: round(v, 1) for key, v in human.items()},
         "certainty_per_k": round(certainty, 1),
@@ -116,10 +131,11 @@ def score(r):
         "对称凑数（每千字每处 6，封顶 12）": min(12, pair_n / k * 6),
         "「不是A而是B」超出放行（每 2000 字放行 1 次，多 1 次 6，封顶 18）": min(18, max(0, not_but - allow) * 6),
         "破折号/分号（每千字每个 2，封顶 8）": min(8, (r["dash"] + r["semicolon"]) / k * 2),
-        "长句 >30 字（每千字每句 3，封顶 9）": min(9, len(r["long_sentences"]) / k * 3),
+        "一口气念不完：分句 >25 字（每千字每处 3，封顶 9）": min(9, len(r["long_clauses"]) / k * 3),
         "人称密度 < 12/千字（+8）": 8 if r["human_per_k"]["人称（你/我/我们）"] < 12 else 0,
         "设问密度 < 2/千字（+5）": 5 if r["human_per_k"]["设问（？/吗/呢）"] < 2 else 0,
         "数字密度 < 2/千字（+5）": 5 if r["human_per_k"]["数字"] < 2 else 0,
+        "逻辑词 < 12/千字（+5）": 5 if r["human_per_k"]["逻辑词（因为/所以/但/如果/那么/它…）"] < 12 else 0,
     }
     total = round(min(100, sum(parts.values())))
     grade = "人话" if total < 20 else "轻微 AI 味" if total < 40 else "明显 AI 味" if total < 60 else "重度 AI 味"
@@ -129,7 +145,8 @@ def score(r):
 def to_md(r, total, grade, parts):
     L = [f"## AI 味体检：{total} / 100（{grade}）", "",
          f"- 字数 {r['chars']} · 句数 {r['sentences']} · 句长中位 {r['sent_len_median']} 字 · P90 {r['sent_len_p90']} 字"
-         f"（参考：口播句长中位 18 字，极少超过 30 字）", ""]
+         f" · 分句（一口气）中位 {r['clause_len_median']} 字 · P90 {r['clause_len_p90']} 字",
+         "- 参考（四条代表作按语法重新断句）：一句话中位约 28 字，论证句常 30–60 字；一口气中位 10 字、P90 20 字", ""]
     if parts:
         L += ["**扣分构成**", ""] + [f"- {key}：+{v}" for key, v in parts.items()] + [""]
     if r["hits"]:
@@ -143,14 +160,14 @@ def to_md(r, total, grade, parts):
         L += ["**句式**", ""] + [f"- {name}：{v['count']} 次 —— {' / '.join(v['where'])}" for name, v in r["pairs"].items()] + [""]
     if r["dash"] or r["semicolon"]:
         L += [f"**书面标点**：破折号 {r['dash']} · 分号 {r['semicolon']}（口播念不出来，换成停顿或拆句）", ""]
-    if r["long_sentences"]:
-        L += ["**长句 >30 字**", ""] + [f"- {s[:60]}" for s in r["long_sentences"][:5]] + [""]
+    if r["long_clauses"]:
+        L += ["**一口气念不完的分句（>25 字，在中间加逗号或连接词）**", ""] + [f"- {c[:60]}" for c in r["long_clauses"][:5]] + [""]
     L += ["**人味指标**（次/千字；括号内为 71 篇口播实测）", ""]
     for key, v in r["human_per_k"].items():
         L.append(f"- {key}：{v}（{HUMAN_BASE[key]}）")
     flag = "（超过 2，建议删掉一部分：笃定感靠结构，不靠确定词）" if r["certainty_per_k"] > 2 else ""
     L += [f"- 确定词（一定/绝对/肯定…）：{r['certainty_per_k']}（71 篇口播中位 1.67，上限 2）{flag}"]
-    L += ["", "> 指数只是起点：先修结构（有没有立场、有没有具体），再删套话；别为了凑指标硬塞「对吧」「其实」——那是学腔调。"]
+    L += ["", "> 指数只是起点：先修逻辑和结构（段与段是否咬合、有没有立场、有没有具体），再删套话；别为了凑指标硬塞「对吧」「其实」，那是学腔调。逻辑词也别硬塞：超过 35/千字（他最高的一期 33）就是矫枉过正。"]
     return "\n".join(L)
 
 
