@@ -16,6 +16,7 @@
   7. 书面标点       破折号、分号（口播没有标点，念不出来）
   8. 长句           单句 > 30 字
   9. 人味不足       「你 / 我 / 我们」人称密度、设问密度、数字密度偏低
+  另报：确定词密度（一定/绝对/肯定…，上限 2 次/千字；只提示，不计入指数）
 
 基准：「王自如AI」71 个视频（约 50 小时口播、796,821 字转写）的实测频次，报告里逐项对照。
 AI 味指数 0–100，公式写在 score() 里，完全透明；它是体检的起点，不是判决书。
@@ -91,12 +92,14 @@ def analyse(text):
         "设问（？/吗/呢）": (text.count("？") + text.count("?") + text.count("吗") + text.count("呢")) / k,
         "数字": len(NUM.findall(text)) / k,
     }
+    certainty = len(re.findall(r"一定|绝对|肯定|必然|毫无疑问|百分之百", text)) / k
     return {
         "chars": n, "sentences": len(sents),
         "sent_len_median": lens[len(lens) // 2], "sent_len_p90": lens[min(len(lens) - 1, int(len(lens) * 0.9))],
         "long_sentences": long_s, "hits": hits, "pairs": pairs,
         "dash": len(re.findall(r"—+", text)), "semicolon": text.count("；") + text.count(";"),
         "human_per_k": {key: round(v, 1) for key, v in human.items()},
+        "certainty_per_k": round(certainty, 1),
     }
 
 
@@ -145,6 +148,8 @@ def to_md(r, total, grade, parts):
     L += ["**人味指标**（次/千字；括号内为 71 篇口播实测）", ""]
     for key, v in r["human_per_k"].items():
         L.append(f"- {key}：{v}（{HUMAN_BASE[key]}）")
+    flag = "（超过 2，建议删掉一部分：笃定感靠结构，不靠确定词）" if r["certainty_per_k"] > 2 else ""
+    L += [f"- 确定词（一定/绝对/肯定…）：{r['certainty_per_k']}（71 篇口播中位 1.67，上限 2）{flag}"]
     L += ["", "> 指数只是起点：先修结构（有没有立场、有没有具体），再删套话；别为了凑指标硬塞「对吧」「其实」——那是学腔调。"]
     return "\n".join(L)
 
