@@ -69,6 +69,14 @@ git clone https://github.com/chrislitality-svg/wangziru-analysis-skill.git "$env
 
 没给立场时，它会替你选一个**有争议的**立场并说明——没有立场就没有纠偏，没有纠偏就不是这套系统。
 
+### 效果取决于你用的模型
+
+skill 是一份说明书，真正执行它的是你接的模型。同一份 skill，换成 GPT、Claude、Grok 或它们的不同型号，拆解的深度、逻辑链表排得对不对、会不会为了"具体"去编数字，差别都可能很大。
+
+- 本仓库的 skill、示例和 v1.3 的逻辑链、长句分析，都是在 Claude Code 里用 **Claude Opus 5.5** 做的。其他模型我们没有系统测过，不做评价。
+- 尽量在能读文件、能跑 Python 的工具里用（Claude Code / Codex / Cursor 等）：skill 要按需读十几份参考文件，还要跑检测脚本。只能对话的环境也能用，但要手动贴参考文件，检测只能人工扫。
+- 换了模型，先拿 [示例 01](examples/01-拆解蓝图-AI如何在企业落地.md) 的同一个选题跑一遍对比，再用[逻辑体检](#逻辑体检)和 `tools/ai_flavor_check.py` 给输出做一次体检。欢迎在 Issues 里告诉我们你的模型和结果。
+
 ### 单独用检测器
 
 ```bash
