@@ -2,6 +2,10 @@
 
 > 学结构，不学腔调。
 
+> **仓库状态（2026-10）**：本仓库是原始仓库，停留在 v1.4 快照（2026-10-12），不再更新。后续开发已拆分为两版：
+> - **第二版 · 数据加强版**（自本仓库 v1.4 继续，持续更新，已改名「像王自如一样思考」）：[think-like-wangziru](https://github.com/chrislitality-svg/think-like-wangziru)
+> - **第一版 · 原始配方**（v1.0–v1.3 蓝图工作流，逻辑通用）：[wangziru-analysis-skill-v1](https://github.com/chrislitality-svg/wangziru-analysis-skill-v1)
+
 ![License](https://img.shields.io/badge/license-CC%20BY--NC%204.0-lightgrey) ![Agent Skill](https://img.shields.io/badge/Agent%20Skill-Claude%20Code%20%7C%20Codex%20%7C%20Cursor-blue) ![AI 味检测](https://img.shields.io/badge/AI%E5%91%B3%E6%A3%80%E6%B5%8B-%E9%9B%B6%E4%BE%9D%E8%B5%96-green)
 
 一个给 AI 编程助手（Claude Code / Codex / Cursor 等）用的 **Agent Skill**。v1.4 起，按用户的话直接做三件事：给选题就写能念的口播，贴旧稿就改，问怎么想就把这题的思考顺序讲出来。
